@@ -100,8 +100,7 @@ def collate_records(records, gen_records, opts):
         sample["image_path"] = image_path
         sample["json_data"] = json_data        
 
-        angle = float(json_data['user/angle'])
-        throttle = float(json_data["user/throttle"])
+        angle, throttle = Tub.get_angle_throttle(json_data)
 
         if opts['categorical']:
             angle = dk.utils.linear_bin(angle)
@@ -786,8 +785,7 @@ def sequence_train(cfg, tub_names, model_name, transfer_model, model_type, conti
         sample["tub_path"] = basepath
         sample["index"] = get_image_index(image_filename)
 
-        angle = float(json_data['user/angle'])
-        throttle = float(json_data["user/throttle"])
+        angle, throttle = Tub.get_angle_throttle(json_data)
 
         sample['target_output'] = np.array([angle, throttle])
         sample['angle'] = angle

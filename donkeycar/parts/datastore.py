@@ -312,6 +312,24 @@ class Tub(object):
 
         return data
 
+    @classmethod
+    def get_angle_throttle(cls, json_data):
+        angle = float(json_data['user/angle'])
+        throttle = float(json_data["user/throttle"])
+
+        # If non-valid user entries and we have pilot data (e.g. AI), use that instead.
+        if (0.0 == angle) and (0.0 == throttle):
+            if "pilot/angle" in json_data:
+                pa = json_data['pilot/angle']
+                if pa is not None:
+                    angle = float(pa)
+            if "pilot/throttle" in json_data:
+                pt = json_data['pilot/throttle']
+                if pt is not None:
+                    throttle = float(pt)
+
+        return angle, throttle
+
 
     def gather_records(self):
         ri = lambda fnm : int( os.path.basename(fnm).split('_')[1].split('.')[0] )
