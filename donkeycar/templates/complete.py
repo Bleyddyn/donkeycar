@@ -526,8 +526,8 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     if cfg.RECORD_DURING_AI:
         inputs += ['pilot/angle', 'pilot/throttle']
         types += ['float', 'float']
-    
-    th = TubHandler(path=cfg.DATA_PATH)
+
+    th = TubHandler(path=cfg.DATA_PATH, name_format="{year}{month:02}{day:02}_{num}.{tub}", short_year=False)
     tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=meta)
     V.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
 
