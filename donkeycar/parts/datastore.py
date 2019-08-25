@@ -482,14 +482,16 @@ class TubReader(Tub):
 
 
 class TubHandler():
-    def __init__(self, path):
+    def __init__(self, path, name_format="{tub}_{num}_{year}-{month:02}-{day:02}", short_year=True):
         self.path = os.path.expanduser(path)
+        self.name_format = name_format
+        self.short_year = short_year
 
-    def get_tub_list(self,path):
+    def _get_tub_list(self,path):
         folders = next(os.walk(path))[1]
         return folders
 
-    def next_tub_number(self, path):
+    def _next_tub_number(self, path):
         def get_tub_num(tub_name):
             try:
                 num = int(tub_name.split('_')[1])
@@ -497,21 +499,27 @@ class TubHandler():
                 num = 0
             return num
 
-        folders = self.get_tub_list(path)
+        folders = self._get_tub_list(path)
         numbers = [get_tub_num(x) for x in folders]
         #numbers = [i for i in numbers if i is not None]
         next_number = max(numbers+[0]) + 1
         return next_number
 
-    def create_tub_path(self):
-        tub_num = self.next_tub_number(self.path)
-        date = datetime.datetime.now().strftime('%y-%m-%d')
-        name = '_'.join(['tub',str(tub_num),date])
+    def _create_tub_path(self):
+        tub_num = self._next_tub_number(self.path)
+        dt = datetime.datetime.now()
+        if self.short_year:
+            year = dt.strftime('%y')
+        else:
+            year = dt.year
+        #date = dt.strftime('%y-%m-%d')
+        #oldname = '_'.join(['tub',str(tub_num),date])
+        name = self.name_format.format( tub="tub", num=tub_num, year=year, month=dt.month, day=dt.day )
         tub_path = os.path.join(self.path, name)
         return tub_path
 
     def new_tub_writer(self, inputs, types, user_meta=[]):
-        tub_path = self.create_tub_path()
+        tub_path = self._create_tub_path()
         tw = TubWriter(path=tub_path, inputs=inputs, types=types, user_meta=user_meta)
         return tw
 
