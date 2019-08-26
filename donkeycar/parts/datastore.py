@@ -494,7 +494,9 @@ class TubHandler():
     def _next_tub_number(self, path):
         def get_tub_num(tub_name):
             try:
-                num = int(tub_name.split('_')[1])
+                # This is brittle, but covers the two cases I care about:
+                # "tub_num_year-month-day" and "yearmonthday_num.tub"
+                num = int(os.path.splitext(tub_name)[0].split('_')[1])
             except:
                 num = 0
             return num
