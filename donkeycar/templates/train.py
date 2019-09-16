@@ -31,6 +31,8 @@ from docopt import docopt
 import numpy as np
 from PIL import Image
 
+from malpi.notify import notify
+
 import donkeycar as dk
 from donkeycar.parts.datastore import Tub
 from donkeycar.parts.keras import KerasLinear, KerasIMU,\
@@ -578,6 +580,12 @@ def go_train(kl, cfg, train_gen, val_gen, gen_records, model_name, steps_per_epo
     print("Training completed in %s." % str(datetime.timedelta(seconds=round(duration_train))) )
 
     print("\n\n----------- Best Eval Loss :%f ---------" % save_best.best)
+
+    try:
+        import email_config
+        notify( "Training Finished", subTitle='', message='Validation Loss {}'.format( full_model_val_loss), email_to="bleyddyn.aprhys@gmail.com", mac=True, sound=True, email_config=email_config.notifications )
+    except Exception as ex:
+        print( "Failed to send notifications: {}".format( ex ) )
 
     if cfg.SHOW_PLOT:
         try:
