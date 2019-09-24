@@ -22,8 +22,6 @@ from tensorflow.python import keras
 import numpy as np
 from PIL import Image
 
-from malpi.notify import notify
-
 import donkeycar as dk
 from donkeycar.parts.datastore import Tub
 from donkeycar.parts.keras import KerasLinear, KerasIMU,\
@@ -270,6 +268,7 @@ class Generators:
 
         self.gen_records = {}
         self.tub_names = tub_names
+        self.save_best = save_best
 
         verbose = cfg.VEBOSE_TRAIN
 
@@ -281,11 +280,12 @@ class Generators:
 
         extract_data_from_pickles(cfg, tub_names)
         records = gather_records(cfg, tub_names, opts, verbose=True)
-        print('collating %d records ...' % (len(records)))
+        if verbose:
+            print('collating %d records ...' % (len(records)))
         collate_records(records, self.gen_records, opts)
 
-        self.train_gen = Generators.generator_func(save_best, opts, self.gen_records, cfg.BATCH_SIZE, isTrainSet=True, aug=aug)
-        self.val_gen = Generators.generator_func(save_best, opts, self.gen_records, cfg.BATCH_SIZE, isTrainSet=False, aug=aug)
+        self.train_gen = Generators.generator_func(self, opts, self.gen_records, cfg.BATCH_SIZE, isTrainSet=True, aug=aug)
+        self.val_gen = Generators.generator_func(self, opts, self.gen_records, cfg.BATCH_SIZE, isTrainSet=False, aug=aug)
         
         self.num_train = 0
         self.num_val = 0
@@ -323,6 +323,13 @@ class Generators:
 
     def val_steps(self):
         return self._val_steps
+
+    def reset_best(self):
+        if self.save_best is not None:
+            self.save_best.reset_best()
+
+    def set_save_best(self, save_best):
+        self.save_best = save_best
 
     @staticmethod
     def generator_func(save_best, opts, data, batch_size, isTrainSet=True, min_records_to_train=1000, aug=False):
@@ -460,11 +467,10 @@ class Generators:
 
                     batch_data = []
 
-def make_model(cfg, model_name, transfer_model, model_type ):
+def make_model(cfg, model_name, transfer_model, model_type, verbose=False ):
     '''
     Create and return a Keras model
     '''
-    verbose = cfg.VEBOSE_TRAIN
 
     if model_type is None:
         model_type = cfg.DEFAULT_MODEL_TYPE
@@ -494,16 +500,19 @@ def make_model(cfg, model_name, transfer_model, model_type ):
 
     kl = get_model_by_type(train_type, cfg=cfg)
 
-    print('training with model type', type(kl))
+    if verbose:
+        print('training with model type', type(kl))
 
     if transfer_model:
-        print('loading weights from model', transfer_model)
+        if verbose:
+            print('loading weights from model', transfer_model)
         kl.load(transfer_model)
 
         #when transfering models, should we freeze all but the last N layers?
         if cfg.FREEZE_LAYERS:
             num_to_freeze = len(kl.model.layers) - cfg.NUM_LAST_LAYERS_TO_TRAIN
-            print('freezing %d layers' % num_to_freeze)
+            if verbose:
+                print('freezing %d layers' % num_to_freeze)
             for i in range(num_to_freeze):
                 kl.model.layers[i].trainable = False
 
@@ -512,45 +521,39 @@ def make_model(cfg, model_name, transfer_model, model_type ):
 
     kl.compile()
 
-    return kl, model_name
+    if cfg.PRINT_MODEL_SUMMARY:
+        print(kl.model.summary())
 
-def train(cfg, tub_names, model_name, transfer_model, model_type, continuous, aug):
+    return kl, os.path.expanduser(model_name)
+
+def train_example(cfg, tub_names, model_name, transfer_model, model_type, continuous, aug):
     '''
+    Example code for how to use the main functions in this library to train a DK model.
     use the specified data in tub_names to train an artifical neural network
     saves the output trained model as model_name
     '''
-    verbose = cfg.VEBOSE_TRAIN
-
     if model_type is None:
         model_type = cfg.DEFAULT_MODEL_TYPE
 
     kl, model_name = make_model(cfg, model_name, transfer_model, model_type )
 
-    if cfg.PRINT_MODEL_SUMMARY:
-        print(kl.model.summary())
-    
-    model_path = os.path.expanduser(model_name)
-
-    #checkpoint to save model after each epoch and send best to the pi.
-    save_best = MyCPCallback(send_model_cb=on_best_model,
-                                    filepath=model_path,
-                                    monitor='val_loss',
-                                    verbose=verbose,
-                                    save_best_only=True,
-                                    mode='min',
-                                    cfg=cfg)
-
-    gens = Generators( cfg, tub_names, kl, model_type, continuous, aug=aug, save_best=save_best )
+    gens = Generators( cfg, tub_names, kl, model_type, continuous, aug=aug )
     
     cfg.model_type = model_type
 
-    print("train: %d, val: %d" % (gens.train_count(), gens.val_count()))
-    print('total records: %d' %(gens.total_count()))
-    print('steps_per_epoch', gens.train_steps())
+    print("Samples: total: %d, train: %d, val: %d" % (gens.total_count(), gens.train_count(), gens.val_count()))
+    print('Steps per epoch: %d' % gens.train_steps())
 
-    go_train(kl, cfg, gens, model_name, continuous, verbose, save_best)
+    history = train(kl, cfg, gens, model_name, continuous, verbose=cfg.VEBOSE_TRAIN)
+
+    if cfg.SHOW_PLOT:
+        plot_history(history, model_name, gens.save_best.best, True)
     
-def go_train(kl, cfg, generators, model_name, continuous, verbose, save_best=None):
+def train(kl, cfg, generators, model_name, continuous, verbose=False):
+    """
+    Use the data in generators to train an artifical neural network
+    Saves the output trained model as model_name
+    """
 
     if generators.train_steps() < 2:
         raise Exception("Too little data to train. Please record more records.")
@@ -560,14 +563,14 @@ def go_train(kl, cfg, generators, model_name, continuous, verbose, save_best=Non
     model_path = os.path.expanduser(model_name)
 
     #checkpoint to save model after each epoch and send best to the pi.
-    if save_best is None:
-        save_best = MyCPCallback(send_model_cb=on_best_model,
-                                    filepath=model_path,
-                                    monitor='val_loss',
-                                    verbose=verbose,
-                                    save_best_only=True,
-                                    mode='min',
-                                    cfg=cfg)
+    save_best = MyCPCallback(send_model_cb=on_best_model,
+                                filepath=model_path,
+                                monitor='val_loss',
+                                verbose=verbose,
+                                save_best_only=True,
+                                mode='min',
+                                cfg=cfg)
+    generators.set_save_best(save_best)
 
     if continuous:
         epochs = 100000
@@ -599,54 +602,48 @@ def go_train(kl, cfg, generators, model_name, continuous, verbose, save_best=Non
                     validation_steps=generators.val_steps(),
                     workers=workers_count,
                     use_multiprocessing=use_multiprocessing)
-                    
-    full_model_val_loss = min(history.history['val_loss'])
-    max_val_loss = full_model_val_loss + cfg.PRUNE_VAL_LOSS_DEGRADATION_LIMIT
 
-    duration_train = time.time() - start
-    print("Training completed in %s." % str(datetime.timedelta(seconds=round(duration_train))) )
+    if verbose:
+        duration_train = time.time() - start
+        print("Training completed in %s." % str(datetime.timedelta(seconds=round(duration_train))) )
+        print("\n\n----------- Best Eval Loss :%f ---------" % save_best.best)
 
-    print("\n\n----------- Best Eval Loss :%f ---------" % save_best.best)
+    return history
 
+def plot_history(history, model_path, loss, show=True):
     try:
-        import email_config
-        notify( "Training Finished", subTitle='', message='Validation Loss {}'.format( full_model_val_loss), email_to="bleyddyn.aprhys@gmail.com", mac=True, sound=True, email_config=email_config.notifications )
-    except Exception as ex:
-        print( "Failed to send notifications: {}".format( ex ) )
+        if do_plot:
+            plt.figure(1)
 
-    if cfg.SHOW_PLOT:
-        try:
-            if do_plot:
-                plt.figure(1)
+            # Only do accuracy if we have that data (e.g. categorical outputs)
+            if 'angle_out_acc' in history.history:
+                plt.subplot(121)
 
-                # Only do accuracy if we have that data (e.g. categorical outputs)
-                if 'angle_out_acc' in history.history:
-                    plt.subplot(121)
+            # summarize history for loss
+            plt.plot(history.history['loss'])
+            plt.plot(history.history['val_loss'])
+            plt.title('model loss')
+            plt.ylabel('loss')
+            plt.xlabel('epoch')
+            plt.legend(['train', 'validate'], loc='upper right')
 
-                # summarize history for loss
-                plt.plot(history.history['loss'])
-                plt.plot(history.history['val_loss'])
-                plt.title('model loss')
-                plt.ylabel('loss')
+            # summarize history for acc
+            if 'angle_out_acc' in history.history:
+                plt.subplot(122)
+                plt.plot(history.history['angle_out_acc'])
+                plt.plot(history.history['val_angle_out_acc'])
+                plt.title('model angle accuracy')
+                plt.ylabel('acc')
                 plt.xlabel('epoch')
-                plt.legend(['train', 'validate'], loc='upper right')
-                
-                # summarize history for acc
-                if 'angle_out_acc' in history.history:
-                    plt.subplot(122)
-                    plt.plot(history.history['angle_out_acc'])
-                    plt.plot(history.history['val_angle_out_acc'])
-                    plt.title('model angle accuracy')
-                    plt.ylabel('acc')
-                    plt.xlabel('epoch')
-                    #plt.legend(['train', 'validate'], loc='upper left')
+                #plt.legend(['train', 'validate'], loc='upper left')
 
-                plt.savefig(model_path + '_loss_acc_%f.png' % save_best.best)
+            plt.savefig(model_path + '_loss_acc_{loss:.6f}.png'.format(loss=loss))
+            if show:
                 plt.show()
-            else:
-                print("not saving loss graph because matplotlib not set up.")
-        except Exception as ex:
-            print("problems with loss graph: {}".format( ex ) )
+        else:
+            print("not saving loss graph because matplotlib not set up.")
+    except Exception as ex:
+        print("problems with loss graph: {}".format( ex ) )
 
 
 class SequencePredictionGenerator(keras.utils.Sequence):
