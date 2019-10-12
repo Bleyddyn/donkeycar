@@ -143,7 +143,7 @@ HAVE_IMU = False                #when true, this add a Mpu6050 part and records 
 HAVE_SOMBRERO = False           #set to true when using the sombrero hat from the Donkeycar store. This will enable pwm on the hat.
 
 #RECORD OPTIONS
-RECORD_DURING_AI = False        #normally we do not record during ai mode. Set this to true to get image and steering records for your Ai. Be careful not to use them to train.
+RECORD_DURING_AI = False        #normally we do not record during AI mode. Set this to true to get image and steering records for your AI. See this paper for possible uses: https://www.cs.cmu.edu/~sross1/publications/Ross-AIStats11-NoRegret.pdf
 
 #LED
 HAVE_RGB_LED = False            #do you have an RGB LED like https://www.amazon.com/dp/B07BNRZWNF
