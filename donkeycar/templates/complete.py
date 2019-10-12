@@ -426,16 +426,16 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     V.add(AiRunCondition(), inputs=['user/mode'], outputs=['ai_running'])
 
     #Ai Recording
-    class AiRecordingCondition:
-        '''
-        return True when ai mode, otherwize respect user mode recording flag
-        '''
-        def run(self, mode, recording):
-            if mode == 'user':
-                return recording
-            return True
+    if cfg.RECORD_DURING_AI and cfg.AUTO_RECORD_ON_THROTTLE:
+        class AiRecordingCondition:
+            '''
+            return True when ai mode, otherwize respect user mode recording flag
+            '''
+            def run(self, mode, recording):
+                if mode == 'user':
+                    return recording
+                return True
 
-    if cfg.RECORD_DURING_AI:
         V.add(AiRecordingCondition(), inputs=['user/mode', 'recording'], outputs=['recording'])
     
     #Drive train setup
