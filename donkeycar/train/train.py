@@ -279,7 +279,7 @@ class Generators:
         opts['model_type'] = model_type
 
         extract_data_from_pickles(cfg, tub_names)
-        records = gather_records(cfg, tub_names, opts, verbose=True)
+        records = gather_records(cfg, tub_names, opts, verbose=verbose)
         if verbose:
             print('collating %d records ...' % (len(records)))
         collate_records(records, self.gen_records, opts)

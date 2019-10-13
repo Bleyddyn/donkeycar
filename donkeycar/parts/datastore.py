@@ -67,9 +67,9 @@ class Tub(object):
 
             if 'start' in self.meta:
                 self.start_time = self.meta['start']
-            else:
-                self.start_time = time.time()
-                self.meta['start'] = self.start_time
+#            else:
+#                self.start_time = time.time()
+#                self.meta['start'] = self.start_time
 
         elif not exists and inputs:
             print('Tub does NOT exist. Creating new tub...')
