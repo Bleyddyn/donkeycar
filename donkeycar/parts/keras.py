@@ -148,9 +148,9 @@ class KerasLinear(KerasPilot):
     Keras Dense layer with linear activation. One each for steering and throttle.
     The output is not bounded.
     '''
-    def __init__(self, num_outputs=2, input_shape=(120, 160, 3), roi_crop=(0, 0), *args, **kwargs):
+    def __init__(self, num_outputs=2, input_shape=(120, 160, 3), roi_crop=(0, 0), dropout=0.2, *args, **kwargs):
         super(KerasLinear, self).__init__(*args, **kwargs)
-        self.model = default_n_linear(num_outputs, input_shape, roi_crop)
+        self.model = default_n_linear(num_outputs, input_shape, roi_crop, drop=dropout)
         self.compile()
 
     def compile(self):
@@ -324,15 +324,14 @@ def default_categorical(input_shape=(120, 160, 3), roi_crop=(0, 0)):
 
 
 
-def default_n_linear(num_outputs, input_shape=(120, 160, 3), roi_crop=(0, 0)):
-
-    drop = 0.1
+def default_n_linear(num_outputs, input_shape=(120, 160, 3), roi_crop=(0, 0), drop = 0.2):
 
     #we now expect that cropping done elsewhere. we will adjust our expeected image size here:
     input_shape = adjust_input_shape(input_shape, roi_crop)
     
     img_in = Input(shape=input_shape, name='img_in')
     x = img_in
+    x = Dropout(drop)(x)
     x = Convolution2D(24, (5,5), strides=(2,2), activation='relu', name="conv2d_1")(x)
     x = Dropout(drop)(x)
     x = Convolution2D(32, (5,5), strides=(2,2), activation='relu', name="conv2d_2")(x)
