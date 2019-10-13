@@ -42,38 +42,37 @@ class DefaultDriver():
         self.model_reload_cb = None
         self.vehicle = dk.vehicle.Vehicle()
 
-        build(camera_type=camera_type)
+        self.build(camera_type=camera_type)
 
     def build(self, camera_type='single'):
         """ In general, sub-classes should not override this method,
             instead override one or more of the specific build methods called from here
         """
 
-        build_env() # Anything outside of Python (os.environ, check/create directories, etc.)
-        build_config()
-        build_camera(camera_type)
-        build_controller()
-        build_inputs()
+        self.build_env() # Anything outside of Python (os.environ, check/create directories, etc.)
+        self.build_config()
+        self.build_camera(camera_type)
+        self.build_controller()
+        self.build_inputs()
 
-        model_inputs = build_pre_pilot()
-        build_pilot( model_inputs )
-        build_post_pilot()
+        model_inputs = self.build_pre_pilot()
+        self.build_pilot( model_inputs )
+        self.build_post_pilot()
 
-        build_displays()
-        build_drive_train()
-        build_recording()
+        self.build_displays()
+        self.build_drive_train()
+        self.build_recording()
 
-        user_notifications()
-        self.controller.print_controls()
+        self.user_notifications()
 
     def build_env(self):
         if self.cfg.DONKEY_GYM:
             #the simulator will use cuda and then we usually run out of resources
             #if we also try to use cuda. so disable for donkey_gym.
-            os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
+            os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
         #Sombrero
-        if cfg.HAVE_SOMBRERO:
+        if self.cfg.HAVE_SOMBRERO:
             """ This sets GPIO Board pin 37 as a low output """
             from donkeycar.parts.sombrero import Sombrero
             s = Sombrero()
@@ -82,7 +81,7 @@ class DefaultDriver():
         if self.model_type is None:
             if self.cfg.TRAIN_LOCALIZER:
                 self.model_type = "localizer"
-            elif cfg.TRAIN_BEHAVIORS:
+            elif self.cfg.TRAIN_BEHAVIORS:
                 self.model_type = "behavior"
             else:
                 self.model_type = self.cfg.DEFAULT_MODEL_TYPE
@@ -96,7 +95,7 @@ class DefaultDriver():
         if camera_type == "stereo":
 
             if self.cfg.CAMERA_TYPE == "WEBCAM":
-                from donkeycar.parts.camera import Webcam            
+                from donkeycar.parts.camera import Webcam
 
                 camA = Webcam(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, iCam = 0)
                 camB = Webcam(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, iCam = 1)
@@ -114,17 +113,17 @@ class DefaultDriver():
 
             from donkeycar.parts.image import StereoPair
 
-            self.vehicle.add(StereoPair(), inputs=['cam/image_array_a', 'cam/image_array_b'], 
+            self.vehicle.add(StereoPair(), inputs=['cam/image_array_a', 'cam/image_array_b'],
                 outputs=['cam/image_array'])
 
         else:
             if self.cfg.DONKEY_GYM:
-                from donkeycar.parts.dgym import DonkeyGymEnv 
-            
+                from donkeycar.parts.dgym import DonkeyGymEnv
+
             inputs = []
             threaded = True
             if self.cfg.DONKEY_GYM:
-                from donkeycar.parts.dgym import DonkeyGymEnv 
+                from donkeycar.parts.dgym import DonkeyGymEnv
                 cam = DonkeyGymEnv(self.cfg.DONKEY_SIM_PATH, env_name=self.cfg.DONKEY_GYM_ENV_NAME)
                 threaded = True
                 inputs = ['angle', 'throttle']
@@ -137,39 +136,38 @@ class DefaultDriver():
             elif self.cfg.CAMERA_TYPE == "CVCAM":
                 from donkeycar.parts.cv import CvCam
                 cam = CvCam(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH)
-            elif cfg.CAMERA_TYPE == "CSIC":
+            elif self.cfg.CAMERA_TYPE == "CSIC":
                 from donkeycar.parts.camera import CSICamera
-                cam = CSICamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, framerate=cfg.CAMERA_FRAMERATE, gstreamer_flip=cfg.CSIC_CAM_GSTREAMER_FLIP_PARM)
-            elif cfg.CAMERA_TYPE == "V4L":
+                cam = CSICamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, framerate=self.cfg.CAMERA_FRAMERATE, gstreamer_flip=self.cfg.CSIC_CAM_GSTREAMER_FLIP_PARM)
+            elif self.cfg.CAMERA_TYPE == "V4L":
                 from donkeycar.parts.camera import V4LCamera
-                cam = V4LCamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, framerate=cfg.CAMERA_FRAMERATE)
-            elif cfg.CAMERA_TYPE == "MOCK":
+                cam = V4LCamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH, framerate=self.cfg.CAMERA_FRAMERATE)
+            elif self.cfg.CAMERA_TYPE == "MOCK":
                 from donkeycar.parts.camera import MockCamera
                 cam = MockCamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH)
             else:
-                raise(Exception("Unkown camera type: %s" % cfg.CAMERA_TYPE))
-                
+                raise(Exception("Unkown camera type: %s" % self.cfg.CAMERA_TYPE))
+
             self.vehicle.add(cam, inputs=inputs, outputs=['cam/image_array'], threaded=threaded)
-        
+
     def build_controller(self):
         if self.use_joystick or self.cfg.USE_JOYSTICK_AS_DEFAULT:
             from donkeycar.parts.controller import get_js_controller
-            
+
             ctr = get_js_controller(self.cfg)
-            
+
             if self.cfg.USE_NETWORKED_JS:
                 from donkeycar.parts.controller import JoyStickSub
-                netwkJs = JoyStickSub(cfg.NETWORK_JS_SERVER_IP)
+                netwkJs = JoyStickSub(self.cfg.NETWORK_JS_SERVER_IP)
                 self.vehicle.add(netwkJs, threaded=True)
                 ctr.js = netwkJs
 
-        else:        
+        else:
             #This web controller will create a web server that is capable
             #of managing steering, throttle, and modes, and more.
             ctr = LocalWebController()
 
-        
-        self.vehicle.add(ctr, 
+        self.vehicle.add(ctr,
               inputs=['cam/image_array'], # TODO: figure out if this is necessary
               outputs=['user/angle', 'user/throttle', 'user/mode', 'recording'],
               threaded=True)
@@ -177,17 +175,18 @@ class DefaultDriver():
         self.controller = ctr
 
         #this throttle filter will allow one tap back for esc reverse
-        V.add(ThrottleFilter(), inputs=['user/throttle'], outputs=['user/throttle'])
-    
+        self.vehicle.add(ThrottleFilter(), inputs=['user/throttle'], outputs=['user/throttle'])
+
     def build_displays(self):
         class LedConditionLogic:
             """ TODO: Move this and other parts to a separate file """
-            def __init__(self, cfg):
+            def __init__(self, cfg, model_type):
                 self.cfg = cfg
+                self.model_type = model_type
 
             def run(self, mode, recording, recording_alert, behavior_state, model_file_changed, track_loc):
                 #returns a blink rate. 0 for off. -1 for on. positive for rate.
-                
+
                 if track_loc is not None:
                     led.set_rgb(*self.cfg.LOC_COLORS[track_loc])
                     return -1
@@ -203,8 +202,8 @@ class DefaultDriver():
                     return self.cfg.REC_COUNT_ALERT_BLINK_RATE
                 else:
                     led.set_rgb(self.cfg.LED_R, self.cfg.LED_G, self.cfg.LED_B)
-            
-                if behavior_state is not None and model_type == 'behavior':
+
+                if behavior_state is not None and self.model_type == 'behavior':
                     r, g, b = self.cfg.BEHAVIOR_LED_COLORS[behavior_state]
                     led.set_rgb(r, g, b)
                     return -1 #solid on
@@ -238,22 +237,22 @@ class DefaultDriver():
                 for count, color in self.alert_colors:
                     if num_records >= count:
                         col = color
-                return col    
+                return col
 
             def run(self, num_records):
                 if num_records is None:
                     return 0
-                
+
                 if self.last_num_rec_print != num_records or self.force_alert:
                     self.last_num_rec_print = num_records
 
                     if num_records % 10 == 0:
                         print("recorded", num_records, "records")
-                            
+
                     if num_records % self.alert_count == 0 or self.force_alert:
                         self.dur_alert = num_records // self.alert_count * self.alert_cycle
                         self.force_alert = 0
-                        
+
                 if self.dur_alert > 0:
                     self.dur_alert -= 1
 
@@ -262,23 +261,24 @@ class DefaultDriver():
 
                 return 0
 
-        rec_tracker_part = RecordTracker()
+        rec_tracker_part = RecordTracker(self.cfg.REC_COUNT_ALERT, self.cfg.REC_COUNT_ALERT_CYC, self.cfg.RECORD_ALERT_COLOR_ARR)
         self.vehicle.add(rec_tracker_part, inputs=["tub/num_records"], outputs=['records/alert'])
 
-        #this part will signal visual LED, if connected
-        self.vehicle.add(FileWatcher(self.model_path, verbose=True), outputs=['modelfile/modified'])
+        if self.model_path:
+            #this part will signal visual LED, if connected
+            self.vehicle.add(FileWatcher(self.model_path, verbose=True), outputs=['modelfile/modified'])
 
-        #these parts will reload the model file, but only when ai is running so we don't interrupt user driving
-        self.vehicle.add(FileWatcher(self.model_path), outputs=['modelfile/dirty'], run_condition="ai_running")
-        self.vehicle.add(DelayedTrigger(100), inputs=['modelfile/dirty'], outputs=['modelfile/reload'], run_condition="ai_running")
-        self.vehicle.add(TriggeredCallback(self.model_path, self.model_reload_cb), inputs=["modelfile/reload"], run_condition="ai_running")
+            #these parts will reload the model file, but only when ai is running so we don't interrupt user driving
+            self.vehicle.add(FileWatcher(self.model_path), outputs=['modelfile/dirty'], run_condition="ai_running")
+            self.vehicle.add(DelayedTrigger(100), inputs=['modelfile/dirty'], outputs=['modelfile/reload'], run_condition="ai_running")
+            self.vehicle.add(TriggeredCallback(self.model_path, self.model_reload_cb), inputs=["modelfile/reload"], run_condition="ai_running")
 
         if self.cfg.HAVE_RGB_LED and not self.cfg.DONKEY_GYM:
             from donkeycar.parts.led_status import RGB_LED
             led = RGB_LED(self.cfg.LED_PIN_R, self.cfg.LED_PIN_G, self.cfg.LED_PIN_B, self.cfg.LED_INVERT)
-            led.set_rgb(self.cfg.LED_R, self.cfg.LED_G, self.cfg.LED_B)        
-            
-            self.vehicle.add(LedConditionLogic(self.cfg), inputs=['user/mode', 'recording', "records/alert", 'behavior/state', 'modelfile/modified', "pilot/loc"],
+            led.set_rgb(self.cfg.LED_R, self.cfg.LED_G, self.cfg.LED_B)
+
+            self.vehicle.add(LedConditionLogic(self.cfg, self.model_type), inputs=['user/mode', 'recording', "records/alert", 'behavior/state', 'modelfile/modified', "pilot/loc"],
                   outputs=['led/blink_rate'])
 
             self.vehicle.add(led, inputs=['led/blink_rate'])
@@ -302,7 +302,7 @@ class DefaultDriver():
             self.vehicle.add(imu, outputs=['imu/acl_x', 'imu/acl_y', 'imu/acl_z',
                 'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z'], threaded=True)
 
-    def build_pre_pilot(self):
+    def build_pre_pilot_conditions(self):
 
         class AiRunCondition:
             '''
@@ -315,17 +315,20 @@ class DefaultDriver():
 
         self.vehicle.add(AiRunCondition(), inputs=['user/mode'], outputs=['ai_running'])
 
-        #See if we should even run the pilot module. 
+        #See if we should even run the pilot module.
         #This is only needed because the part run_condition only accepts boolean
         class PilotCondition:
             def run(self, mode):
                 if mode == 'user':
                     return False
                 else:
-                    return True       
+                    return True
 
         self.vehicle.add(PilotCondition(), inputs=['user/mode'], outputs=['run_pilot'])
-        
+
+    def build_pre_pilot(self):
+
+        self.build_pre_pilot_conditions()
 
         class ImgPreProcess():
             '''
@@ -356,9 +359,9 @@ class DefaultDriver():
             except:
                 pass
 
-            inputs = [inf_input, "behavior/one_hot_state_array"]  
+            inputs = [inf_input, "behavior/one_hot_state_array"]
         #IMU
-        elif model_type == "imu":
+        elif self.model_type == "imu":
             assert(self.cfg.HAVE_IMU)
             inputs=[inf_input,
                 'imu/acl_x', 'imu/acl_y', 'imu/acl_z',
@@ -368,8 +371,9 @@ class DefaultDriver():
 
         return inputs
 
-        def build_pilot( self, inputs ):
+    def build_pilot( self, inputs ):
 
+        if self.model_path:
             def load_model(kl, model_path):
                 start = time.time()
                 print('loading model', model_path)
@@ -399,76 +403,75 @@ class DefaultDriver():
                     print(e)
                     print("ERR>> problems loading model json", json_fnm)
 
-            if self.model_path:
-                #When we have a model, first create an appropriate Keras part
-                kl = dk.utils.get_model_by_type(model_type, cfg)
+            #When we have a model, first create an appropriate Keras part
+            kl = dk.utils.get_model_by_type(self.model_type, self.cfg)
 
-                self.model_reload_cb = None
+            self.model_reload_cb = None
 
-                if '.h5' in self.model_path or '.uff' in self.model_path or 'tflite' in self.model_path or '.pkl' in self.model_path:
-                    #when we have a .h5 extension
-                    #load everything from the model file
-                    load_model(kl, self.model_path)
+            if '.h5' in self.model_path or '.uff' in self.model_path or 'tflite' in self.model_path or '.pkl' in self.model_path:
+                #when we have a .h5 extension
+                #load everything from the model file
+                load_model(kl, self.model_path)
 
-                    def reload_model(filename):
-                        load_model(kl, filename)
+                def reload_model(filename):
+                    load_model(kl, filename)
 
-                    self.model_reload_cb = reload_model
+                self.model_reload_cb = reload_model
 
-                elif '.json' in self.model_path:
-                    #when we have a .json extension
-                    #load the model from there and look for a matching
-                    #.wts file with just weights
-                    load_model_json(kl, self.model_path)
-                    weights_path = self.model_path.replace('.json', '.weights')
+            elif '.json' in self.model_path:
+                #when we have a .json extension
+                #load the model from there and look for a matching
+                #.wts file with just weights
+                load_model_json(kl, self.model_path)
+                weights_path = self.model_path.replace('.json', '.weights')
+                load_weights(kl, weights_path)
+
+                def reload_weights(filename):
+                    weights_path = filename.replace('.json', '.weights')
                     load_weights(kl, weights_path)
 
-                    def reload_weights(filename):
-                        weights_path = filename.replace('.json', '.weights')
-                        load_weights(kl, weights_path)
-                    
-                    self.model_reload_cb = reload_weights
+                self.model_reload_cb = reload_weights
 
-                else:
-                    print("ERR>> Unknown extension type on model file!!")
-                    return
+            else:
+                print("ERR>> Unknown extension type on model file!!")
+                return
 
-                outputs=['pilot/angle', 'pilot/throttle']
+            outputs=['pilot/angle', 'pilot/throttle']
 
-                if self.cfg.TRAIN_LOCALIZER:
-                    outputs.append("pilot/loc")
-            
-                self.model = kl
-                self.vehicle.add(kl, inputs=inputs, 
-                    outputs=outputs,
-                    run_condition='run_pilot')            
-                 
+            if self.cfg.TRAIN_LOCALIZER:
+                outputs.append("pilot/loc")
+
+            self.model = kl
+            self.vehicle.add(kl, inputs=inputs,
+                outputs=outputs,
+                run_condition='run_pilot')
+
     def build_post_pilot(self):
         #Choose what inputs should change the car.
         class DriveMode:
             def __init__(self, throttle_mult):
                 self.throttle_mult = throttle_mult
 
-            def run(self, mode, 
+            def run(self, mode,
                         user_angle, user_throttle,
                         pilot_angle, pilot_throttle):
-                if mode == 'user': 
+                if mode == 'user':
                     return user_angle, user_throttle
-                
+
                 elif mode == 'local_angle':
                     return pilot_angle, user_throttle
-                
-                else: 
-                    return pilot_angle, pilot_throttle * cfg.throttle_mult
-            
-        self.vehicle.add(DriveMode(self.cfg.AI_THROTTLE_MULT), 
+
+                else:
+                    return pilot_angle, pilot_throttle * self.throttle_mult
+
+        self.vehicle.add(DriveMode(self.cfg.AI_THROTTLE_MULT),
               inputs=['user/mode', 'user/angle', 'user/throttle',
-                      'pilot/angle', 'pilot/throttle'], 
+                      'pilot/angle', 'pilot/throttle'],
               outputs=['angle', 'throttle'])
-        
+
         #to give the car a boost when starting ai mode in a race.
         aiLauncher = AiLaunch(self.cfg.AI_LAUNCH_DURATION, self.cfg.AI_LAUNCH_THROTTLE, self.cfg.AI_LAUNCH_KEEP_ENABLED)
-        
+
         self.vehicle.add(aiLauncher,
             inputs=['user/mode', 'throttle'],
             outputs=['throttle'])
@@ -478,7 +481,7 @@ class DefaultDriver():
 
     def build_drive_train(self):
         #Drive train setup
-        if cfg.DONKEY_GYM:
+        if self.cfg.DONKEY_GYM:
             pass
 
         elif self.cfg.DRIVE_TRAIN_TYPE == "SERVO_ESC":
@@ -486,28 +489,28 @@ class DefaultDriver():
 
             steering_controller = PCA9685(self.cfg.STEERING_CHANNEL, self.cfg.PCA9685_I2C_ADDR, busnum=self.cfg.PCA9685_I2C_BUSNUM)
             steering = PWMSteering(controller=steering_controller,
-                                            left_pulse=self.cfg.STEERING_LEFT_PWM, 
+                                            left_pulse=self.cfg.STEERING_LEFT_PWM,
                                             right_pulse=self.cfg.STEERING_RIGHT_PWM)
-            
+
             throttle_controller = PCA9685(self.cfg.THROTTLE_CHANNEL, self.cfg.PCA9685_I2C_ADDR, busnum=self.cfg.PCA9685_I2C_BUSNUM)
             throttle = PWMThrottle(controller=throttle_controller,
                                             max_pulse=self.cfg.THROTTLE_FORWARD_PWM,
-                                            zero_pulse=self.cfg.THROTTLE_STOPPED_PWM, 
+                                            zero_pulse=self.cfg.THROTTLE_STOPPED_PWM,
                                             min_pulse=self.cfg.THROTTLE_REVERSE_PWM)
 
-            V.add(steering, inputs=['angle'])
+            self.vehicle.add(steering, inputs=['angle'])
             self.vehicle.add(throttle, inputs=['throttle'])
-        
+
 
         elif self.cfg.DRIVE_TRAIN_TYPE == "DC_STEER_THROTTLE":
             from donkeycar.parts.actuator import Mini_HBridge_DC_Motor_PWM
-            
+
             steering = Mini_HBridge_DC_Motor_PWM(self.cfg.HBRIDGE_PIN_LEFT, self.cfg.HBRIDGE_PIN_RIGHT)
             throttle = Mini_HBridge_DC_Motor_PWM(self.cfg.HBRIDGE_PIN_FWD, self.cfg.HBRIDGE_PIN_BWD)
 
             self.vehicle.add(steering, inputs=['angle'])
             self.vehicle.add(throttle, inputs=['throttle'])
-        
+
 
         elif self.cfg.DRIVE_TRAIN_TYPE == "DC_TWO_WHEEL":
             from donkeycar.parts.actuator import TwoWheelSteeringThrottle, Mini_HBridge_DC_Motor_PWM
@@ -516,7 +519,7 @@ class DefaultDriver():
             right_motor = Mini_HBridge_DC_Motor_PWM(self.cfg.HBRIDGE_PIN_RIGHT_FWD, self.cfg.HBRIDGE_PIN_RIGHT_BWD)
             two_wheel_control = TwoWheelSteeringThrottle()
 
-            self.vehicle.add(two_wheel_control, 
+            self.vehicle.add(two_wheel_control,
                     inputs=['throttle', 'angle'],
                     outputs=['left_motor_speed', 'right_motor_speed'])
 
@@ -530,9 +533,9 @@ class DefaultDriver():
             assert(self.cfg.STEERING_LEFT_PWM <= 200)
             assert(self.cfg.STEERING_RIGHT_PWM <= 200)
             steering = PWMSteering(controller=steering_controller,
-                                            left_pulse=self.cfg.STEERING_LEFT_PWM, 
+                                            left_pulse=self.cfg.STEERING_LEFT_PWM,
                                             right_pulse=self.cfg.STEERING_RIGHT_PWM)
-           
+
 
             from donkeycar.parts.actuator import Mini_HBridge_DC_Motor_PWM
             motor = Mini_HBridge_DC_Motor_PWM(self.cfg.HBRIDGE_PIN_FWD, self.cfg.HBRIDGE_PIN_BWD)
@@ -553,11 +556,11 @@ class DefaultDriver():
                     return True
 
             self.vehicle.add(AiRecordingCondition(), inputs=['user/mode', 'recording'], outputs=['recording'])
-        
+
         #add tub to save data
 
         inputs=['cam/image_array',
-                'user/angle', 'user/throttle', 
+                'user/angle', 'user/throttle',
                 'user/mode']
 
         types=['image_array',
@@ -567,7 +570,7 @@ class DefaultDriver():
         if self.cfg.TRAIN_BEHAVIORS:
             inputs += ['behavior/state', 'behavior/label', "behavior/one_hot_state_array"]
             types += ['int', 'str', 'vector']
-        
+
         if self.cfg.HAVE_IMU:
             inputs += ['imu/acl_x', 'imu/acl_y', 'imu/acl_z',
                 'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z']
@@ -590,15 +593,15 @@ class DefaultDriver():
         tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=self.meta)
         self.vehicle.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
         self.controller.set_tub(tub)
-        
+
         if self.cfg.BUTTON_PRESS_NEW_TUB:
-    
+
             def new_tub_dir():
                 self.vehicle.parts.pop() # TODO Fix this! Don't assume last part is tub writer.
                 tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=self.meta)
                 self.vehicle.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
                 self.controller.set_tub(tub)
-    
+
             self.controller.set_button_down_trigger('cross', new_tub_dir)
 
     def user_notifications(self):
