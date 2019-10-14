@@ -254,7 +254,7 @@ class DefaultDriver():
                     self.dur_alert -= 1
 
                 if self.dur_alert != 0:
-                    return get_record_alert_color(num_records)
+                    return self.get_record_alert_color(num_records)
 
                 return 0
 
