@@ -15,6 +15,7 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
+from donkeycar.utils import normalize_and_crop
 
 class DefaultDriver():
     '''
@@ -253,7 +254,7 @@ class DefaultDriver():
                     self.dur_alert -= 1
 
                 if self.dur_alert != 0:
-                    return get_record_alert_color(num_records)
+                    return self.get_record_alert_color(num_records)
 
                 return 0
 
