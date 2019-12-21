@@ -5,9 +5,6 @@ DefaultDriver. A base class with default values for building a DonkeyCar vehicle
 import os
 import time
 
-from docopt import docopt
-import numpy as np
-
 import donkeycar as dk
 
 #import parts
@@ -18,7 +15,6 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
-from donkeycar.utils import *
 
 class DefaultDriver():
     '''
