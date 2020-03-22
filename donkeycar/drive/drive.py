@@ -17,6 +17,49 @@ from donkeycar.parts.file_watcher import FileWatcher
 from donkeycar.parts.launch import AiLaunch
 from donkeycar.utils import normalize_and_crop
 
+class RecordTracker:
+    """ TODO: Move this and other parts to a separate file """
+    def __init__(self, alert_count, alert_cycle, alert_colors):
+        """ alert_count takes a number of records, usually found in cfg.RECORD_COUNT_ALERT
+            alert_cycle takes a number of cycles (1/20 of a second), usually found in cfg.RECORD_COUNT_ALERT_CYC
+            alert_colors takes a list of count/rgb_tuple, usually found in cfg.RECORD_ALERT_COLOR_ARR
+        """
+        self.last_num_rec_print = 0
+        self.dur_alert = 0
+        self.force_alert = 0
+        self.alert_count = alert_count
+        self.alert_cycle = alert_cycle
+        self.alert_colors = alert_colors
+
+    def get_record_alert_color(self, num_records):
+        col = (0, 0, 0)
+        for count, color in self.alert_colors:
+            if num_records >= count:
+                col = color
+        return col
+
+    def run(self, num_records):
+        if num_records is None:
+            return 0
+
+        if self.last_num_rec_print != num_records or self.force_alert:
+            self.last_num_rec_print = num_records
+
+            if num_records % 10 == 0:
+                print("recorded", num_records, "records")
+
+            if num_records % self.alert_count == 0 or self.force_alert:
+                self.dur_alert = num_records // self.alert_count * self.alert_cycle
+                self.force_alert = 0
+
+        if self.dur_alert > 0:
+            self.dur_alert -= 1
+
+        if self.dur_alert != 0:
+            return self.get_record_alert_color(num_records)
+
+        return 0
+
 class DefaultDriver():
     '''
     Construct a working robotic vehicle from many parts.
@@ -213,49 +256,6 @@ class DefaultDriver():
                     return 0.5
                 elif mode == 'local':
                     return 0.1
-                return 0
-
-        class RecordTracker:
-            """ TODO: Move this and other parts to a separate file """
-            def __init__(self, alert_count, alert_cycle, alert_colors):
-                """ alert_count takes a number of records, usually found in cfg.RECORD_COUNT_ALERT
-                    alert_cycle takes a number of cycles (1/20 of a second), usually found in cfg.RECORD_COUNT_ALERT_CYC
-                    alert_colors takes a list of count/rgb_tuple, usually found in cfg.RECORD_ALERT_COLOR_ARR
-                """
-                self.last_num_rec_print = 0
-                self.dur_alert = 0
-                self.force_alert = 0
-                self.alert_count = alert_count
-                self.alert_cycle = alert_cycle
-                self.alert_colors = alert_colors
-
-            def get_record_alert_color(self, num_records):
-                col = (0, 0, 0)
-                for count, color in self.alert_colors:
-                    if num_records >= count:
-                        col = color
-                return col
-
-            def run(self, num_records):
-                if num_records is None:
-                    return 0
-
-                if self.last_num_rec_print != num_records or self.force_alert:
-                    self.last_num_rec_print = num_records
-
-                    if num_records % 10 == 0:
-                        print("recorded", num_records, "records")
-
-                    if num_records % self.alert_count == 0 or self.force_alert:
-                        self.dur_alert = num_records // self.alert_count * self.alert_cycle
-                        self.force_alert = 0
-
-                if self.dur_alert > 0:
-                    self.dur_alert -= 1
-
-                if self.dur_alert != 0:
-                    return self.get_record_alert_color(num_records)
-
                 return 0
 
         rec_tracker_part = RecordTracker(self.cfg.REC_COUNT_ALERT, self.cfg.REC_COUNT_ALERT_CYC, self.cfg.RECORD_ALERT_COLOR_ARR)
