@@ -449,6 +449,15 @@ class ShowCnnActivations(BaseCommand):
 
 class ShowPredictionPlots(BaseCommand):
 
+    def get_model(self, cfg, model_path, model_type):
+        model_path = os.path.expanduser(model_path)
+        model = dk.utils.get_model_by_type(model_type, cfg)
+        # This just gets us the text for the plot title:
+        if model_type is None:
+            model_type = cfg.DEFAULT_MODEL_TYPE
+        model.load(model_path)
+        return model
+
     def plot_predictions(self, cfg, tub_paths, model_path, limit, model_type):
         '''
         Plot model predictions for angle and throttle against data from tubs.
@@ -458,11 +467,7 @@ class ShowPredictionPlots(BaseCommand):
         import pandas as pd
 
         model_path = os.path.expanduser(model_path)
-        model = dk.utils.get_model_by_type(model_type, cfg)
-        # This just gets us the text for the plot title:
-        if model_type is None:
-            model_type = cfg.DEFAULT_MODEL_TYPE
-        model.load(model_path)
+        model = self.get_model(cfg, model_path, model_type)
 
         records = gather_records(cfg, tub_paths)
         user_angles = []
