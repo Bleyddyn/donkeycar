@@ -157,16 +157,17 @@ class DefaultDriver():
                 outputs=['cam/image_array'])
 
         else:
-            if self.cfg.DONKEY_GYM:
-                from donkeycar.parts.dgym import DonkeyGymEnv
-
             inputs = []
+            outputs = ['cam/image_array']
             threaded = True
             if self.cfg.DONKEY_GYM:
                 from donkeycar.parts.dgym import DonkeyGymEnv
-                cam = DonkeyGymEnv(self.cfg.DONKEY_SIM_PATH, env_name=self.cfg.DONKEY_GYM_ENV_NAME)
+                cam_conf = {'img_h': self.cfg.IMAGE_H, 'img_w': self.cfg.IMAGE_W, 'img_d': self.cfg.IMAGE_DEPTH}
+                cam = DonkeyGymEnv(self.cfg.DONKEY_SIM_PATH, env_name=self.cfg.DONKEY_GYM_ENV_NAME, cam_conf=cam_conf, return_rewards=self.cfg.DONKEY_GYM_REWARDS)
                 threaded = True
                 inputs = ['angle', 'throttle']
+                if self.cfg.DONKEY_GYM_REWARDS:
+                    outputs.append( 'sim/reward' )
             elif self.cfg.CAMERA_TYPE == "PICAM":
                 from donkeycar.parts.camera import PiCamera
                 cam = PiCamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH)
@@ -188,7 +189,7 @@ class DefaultDriver():
             else:
                 raise(Exception("Unkown camera type: %s" % self.cfg.CAMERA_TYPE))
 
-            self.vehicle.add(cam, inputs=inputs, outputs=['cam/image_array'], threaded=threaded)
+            self.vehicle.add(cam, inputs=inputs, outputs=outputs, threaded=threaded)
 
     def build_controller(self):
         if self.use_joystick or self.cfg.USE_JOYSTICK_AS_DEFAULT:
@@ -585,6 +586,10 @@ class DefaultDriver():
             pub = TCPServeValue("camera")
             self.vehicle.add(ImgArrToJpg(), inputs=['cam/image_array'], outputs=['jpg/bin'])
             self.vehicle.add(pub, inputs=['jpg/bin'])
+
+        if self.cfg.DONKEY_GYM_REWARDS:
+            inputs += ['sim/reward']
+            types += ['float']
 
         th = TubHandler(path=self.cfg.DATA_PATH, name_format="{year}{month:02}{day:02}_{num}.{tub}", short_year=False)
         tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=self.meta)

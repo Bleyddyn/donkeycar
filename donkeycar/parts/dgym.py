@@ -9,11 +9,13 @@ def is_exe(fpath):
 
 class DonkeyGymEnv(object):
 
-    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True ):
+    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True, return_rewards=False ):
         os.environ['DONKEY_SIM_PATH'] = sim_path
         os.environ['DONKEY_SIM_PORT'] = str(port)
         os.environ['DONKEY_SIM_HEADLESS'] = str(headless)
         os.environ['DONKEY_SIM_SYNC'] = str(sync)
+
+        self.return_rewards = return_rewards
 
         if sim_path != "remote" and start_sim:
             if not os.path.exists(sim_path):
@@ -28,6 +30,7 @@ class DonkeyGymEnv(object):
         self.action = [0.0, 0.0]
         self.running = True
         self.info = { 'pos' : (0., 0., 0.)}
+        self.reward = 0.0
         self.delay = float(delay)
 
         if "body_style" in conf:
@@ -36,12 +39,12 @@ class DonkeyGymEnv(object):
             time.sleep(0.1)
 
         if cam_conf is not None:
-            self.env.viewer.set_cam_config(**cam_conf):
+            self.env.viewer.set_cam_config(**cam_conf)
             time.sleep(0.1)
 
     def update(self):
         while self.running:
-            self.frame, _, _, self.info = self.env.step(self.action)
+            self.frame, self.reward, _, self.info = self.env.step(self.action)
 
     def run_threaded(self, steering, throttle):
         if steering is None or throttle is None:
@@ -50,7 +53,10 @@ class DonkeyGymEnv(object):
         if self.delay > 0.0:
             time.sleep(self.delay / 1000.0)
         self.action = [steering, throttle]
-        return self.frame
+        if self.return_rewards:
+            return self.frame, self.reward
+        else:
+            return self.frame
 
     def shutdown(self):
         self.running = False

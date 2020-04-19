@@ -203,6 +203,7 @@ BUTTON_PRESS_NEW_TUB = False #when enabled, makes it easier to divide our data i
 #You will want to download the simulator binary from: https://github.com/tawnkramer/donkey_gym/releases/download/v18.9/DonkeySimLinux.zip
 #then extract that and modify DONKEY_SIM_PATH.
 DONKEY_GYM = False
+DONKEY_GYM_REWARD = False # Record the simulator's reward value if True
 DONKEY_SIM_PATH = "path to sim" #"/home/tkramer/projects/sdsandbox/sdsim/build/DonkeySimLinux/donkey_sim.x86_64"
 DONKEY_GYM_ENV_NAME = "donkey-generated-track-v0" # ("donkey-generated-track-v0"|"donkey-generated-roads-v0"|"donkey-warehouse-v0"|"donkey-avc-sparkfun-v0")
 

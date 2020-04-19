@@ -101,7 +101,14 @@ class RemoteWebServer():
     def shutdown(self):
         pass
     
-    
+    def set_tub(self, tub):
+        # For compatibility with JoystickController
+        pass
+
+    def print_controls(self):
+        # For compatibility with JoystickController
+        pass
+
 class LocalWebController(tornado.web.Application):
 
     def __init__(self):
@@ -150,6 +157,13 @@ class LocalWebController(tornado.web.Application):
     def shutdown(self):
         pass
 
+    def set_tub(self, tub):
+        # For compatibility with JoystickController
+        pass
+
+    def print_controls(self):
+        # For compatibility with JoystickController
+        pass
 
 class DriveAPI(tornado.web.RequestHandler):
 
