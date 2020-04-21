@@ -163,7 +163,12 @@ class DefaultDriver():
             if self.cfg.DONKEY_GYM:
                 from donkeycar.parts.dgym import DonkeyGymEnv
                 cam_conf = {'img_h': self.cfg.IMAGE_H, 'img_w': self.cfg.IMAGE_W, 'img_d': self.cfg.IMAGE_DEPTH}
-                cam = DonkeyGymEnv(self.cfg.DONKEY_SIM_PATH, env_name=self.cfg.DONKEY_GYM_ENV_NAME, cam_conf=cam_conf, return_rewards=self.cfg.DONKEY_GYM_REWARDS)
+                cam = DonkeyGymEnv(self.cfg.DONKEY_SIM_PATH,
+                            env_name=self.cfg.DONKEY_GYM_ENV_NAME,
+                            host=self.cfg.SIM_HOST,
+                            conf=self.cfg.GYM_CONF,
+                            cam_conf=cam_conf,
+                            return_rewards=self.cfg.DONKEY_GYM_REWARDS)
                 threaded = True
                 inputs = ['angle', 'throttle']
                 if self.cfg.DONKEY_GYM_REWARDS:
