@@ -24,8 +24,8 @@ class DonkeyGymEnv(object):
             if not is_exe(sim_path):
                 raise Exception("The path you provided is not an executable: " + sim_path) 
 
-        #self.env = gym.make(env_name, exe_path=sim_path, host=host, port=port, start_sim=start_sim)
-        self.env = gym.make(env_name, exe_path=sim_path, host=host, port=port)
+        self.env = gym.make(env_name, exe_path=sim_path, host=host, port=port, start_sim=start_sim)
+        #self.env = gym.make(env_name, exe_path=sim_path, host=host, port=port)
         self.frame = self.env.reset()
         self.action = [0.0, 0.0]
         self.running = True

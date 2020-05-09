@@ -168,6 +168,7 @@ class DefaultDriver():
                             host=self.cfg.SIM_HOST,
                             conf=self.cfg.GYM_CONF,
                             cam_conf=cam_conf,
+                            start_sim=self.cfg.DONKEY_GYM_START,
                             return_info=self.cfg.DONKEY_GYM_INFO)
                 threaded = True
                 inputs = ['angle', 'throttle']
