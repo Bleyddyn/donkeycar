@@ -168,11 +168,11 @@ class DefaultDriver():
                             host=self.cfg.SIM_HOST,
                             conf=self.cfg.GYM_CONF,
                             cam_conf=cam_conf,
-                            return_rewards=self.cfg.DONKEY_GYM_REWARDS)
+                            return_info=self.cfg.DONKEY_GYM_INFO)
                 threaded = True
                 inputs = ['angle', 'throttle']
-                if self.cfg.DONKEY_GYM_REWARDS:
-                    outputs.append( 'sim/reward' )
+                if self.cfg.DONKEY_GYM_INFO:
+                    outputs.append( 'sim/info' )
             elif self.cfg.CAMERA_TYPE == "PICAM":
                 from donkeycar.parts.camera import PiCamera
                 cam = PiCamera(image_w=IMAGE_W, image_h=IMAGE_H, image_d=IMAGE_DEPTH)
@@ -592,9 +592,9 @@ class DefaultDriver():
             self.vehicle.add(ImgArrToJpg(), inputs=['cam/image_array'], outputs=['jpg/bin'])
             self.vehicle.add(pub, inputs=['jpg/bin'])
 
-        if self.cfg.DONKEY_GYM_REWARDS:
-            inputs += ['sim/reward']
-            types += ['float']
+        if self.cfg.DONKEY_GYM_INFO:
+            inputs += ['sim/info']
+            types += ['dict']
 
         th = TubHandler(path=self.cfg.DATA_PATH, name_format="{year}{month:02}{day:02}_{num}.{tub}", short_year=False)
         tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=self.meta)

@@ -9,13 +9,13 @@ def is_exe(fpath):
 
 class DonkeyGymEnv(object):
 
-    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True, return_rewards=False ):
+    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True, return_info=False ):
         os.environ['DONKEY_SIM_PATH'] = sim_path
         os.environ['DONKEY_SIM_PORT'] = str(port)
         os.environ['DONKEY_SIM_HEADLESS'] = str(headless)
         os.environ['DONKEY_SIM_SYNC'] = str(sync)
 
-        self.return_rewards = return_rewards
+        self.return_info = return_info
 
         if sim_path != "remote" and start_sim:
             if not os.path.exists(sim_path):
@@ -29,8 +29,9 @@ class DonkeyGymEnv(object):
         self.frame = self.env.reset()
         self.action = [0.0, 0.0]
         self.running = True
-        self.info = { 'pos' : (0., 0., 0.)}
-        self.reward = 0.0
+        self.info = {}
+        # only allow known json-able entries from the sim's info dictionary
+        self.valid = ['pos', 'cte', 'speed', 'hit']
         self.delay = float(delay)
 
         if "body_style" in conf:
@@ -44,7 +45,10 @@ class DonkeyGymEnv(object):
 
     def update(self):
         while self.running:
-            self.frame, self.reward, _, self.info = self.env.step(self.action)
+            self.frame, reward, done, info = self.env.step(self.action)
+            self.info = {key: info[key] for key in info if key in self.valid}
+            self.info['reward'] = reward
+            self.info['done'] = done
 
     def run_threaded(self, steering, throttle):
         if steering is None or throttle is None:
@@ -53,8 +57,8 @@ class DonkeyGymEnv(object):
         if self.delay > 0.0:
             time.sleep(self.delay / 1000.0)
         self.action = [steering, throttle]
-        if self.return_rewards:
-            return self.frame, self.reward
+        if self.return_info:
+            return self.frame, self.info
         else:
             return self.frame
 
