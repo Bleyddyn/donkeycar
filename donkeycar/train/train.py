@@ -467,7 +467,7 @@ class Generators:
 
                     batch_data = []
 
-def make_model(cfg, model_name, transfer_model, model_type, verbose=False ):
+def make_model(cfg, model_name, transfer_model, model_type, verbose=False, image_dim=None ):
     '''
     Create and return a Keras model
     '''
@@ -498,7 +498,7 @@ def make_model(cfg, model_name, transfer_model, model_type, verbose=False ):
     else:
         train_type = model_type
 
-    kl = get_model_by_type(train_type, cfg=cfg)
+    kl = get_model_by_type(train_type, cfg=cfg, image_dim=image_dim)
 
     if verbose:
         print('training with model type', type(kl))

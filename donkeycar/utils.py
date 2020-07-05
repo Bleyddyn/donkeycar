@@ -15,6 +15,7 @@ import subprocess
 import math
 import random
 import time
+from collections import namedtuple
 
 from PIL import Image
 import numpy as np
@@ -415,11 +416,16 @@ def gather_records(cfg, tub_names, opts=None, verbose=False):
         records += record_paths
 
     return records
+    
+ImageDim = namedtuple('ImageDim', ['IMAGE_W', 'IMAGE_H', 'IMAGE_DEPTH'])
 
-def get_model_by_type(model_type, cfg):
+def get_model_by_type(model_type, cfg, image_dim=None):
     '''
     given the string model_type and the configuration settings in cfg
     create a Keras model and return it.
+    @param model_type A string that matches one of the supported model types.
+    @param cfg A DonkeyCar style config object.
+    @param image_dim A config object or an ImageDim namedtuple and will override what's in cfg.
     '''
     from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, KerasCategorical, KerasIMU, KerasLinear, Keras3D_CNN, KerasLocalizer, KerasLatent
     from donkeycar.parts.tflite import TFLitePilot
@@ -428,7 +434,10 @@ def get_model_by_type(model_type, cfg):
         model_type = cfg.DEFAULT_MODEL_TYPE
     print("\"get_model_by_type\" model Type is: {}".format(model_type))
 
-    input_shape = (cfg.IMAGE_H, cfg.IMAGE_W, cfg.IMAGE_DEPTH)
+    if image_dim is None:
+        input_shape = (cfg.IMAGE_H, cfg.IMAGE_W, cfg.IMAGE_DEPTH)
+    else:
+        input_shape = (image_dim.IMAGE_H, image_dim.IMAGE_W, image_dim.IMAGE_DEPTH)
     roi_crop = (cfg.ROI_CROP_TOP, cfg.ROI_CROP_BOTTOM)
 
     if model_type == "tflite_linear":

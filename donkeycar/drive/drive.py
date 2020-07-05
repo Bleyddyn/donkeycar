@@ -169,7 +169,8 @@ class DefaultDriver():
                             conf=self.cfg.GYM_CONF,
                             cam_conf=cam_conf,
                             start_sim=self.cfg.DONKEY_GYM_START,
-                            return_info=self.cfg.DONKEY_GYM_INFO)
+                            return_info=self.cfg.DONKEY_GYM_INFO,
+                            reset=self.cfg.DONKEY_GYM_RESET)
                 threaded = True
                 inputs = ['angle', 'throttle']
                 if self.cfg.DONKEY_GYM_INFO:
@@ -375,6 +376,9 @@ class DefaultDriver():
 
         return inputs
 
+    def get_model(self):
+        return dk.utils.get_model_by_type(self.model_type, self.cfg)
+
     def build_pilot( self, inputs ):
 
         if self.model_path:
@@ -408,7 +412,7 @@ class DefaultDriver():
                     print("ERR>> problems loading model json", json_fnm)
 
             #When we have a model, first create an appropriate Keras part
-            kl = dk.utils.get_model_by_type(self.model_type, self.cfg)
+            kl = self.get_model()
 
             self.model_reload_cb = None
 

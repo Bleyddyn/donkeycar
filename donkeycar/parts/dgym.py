@@ -9,13 +9,14 @@ def is_exe(fpath):
 
 class DonkeyGymEnv(object):
 
-    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True, return_info=False ):
+    def __init__(self, sim_path, host="127.0.0.1", port=9091, headless=0, env_name="donkey-generated-track-v0", sync="asynchronous", conf={}, delay=0, cam_conf=None, start_sim=True, return_info=False, reset=False ):
         os.environ['DONKEY_SIM_PATH'] = sim_path
         os.environ['DONKEY_SIM_PORT'] = str(port)
         os.environ['DONKEY_SIM_HEADLESS'] = str(headless)
         os.environ['DONKEY_SIM_SYNC'] = str(sync)
 
         self.return_info = return_info
+        self.reset_on_done = reset
 
         if sim_path != "remote" and start_sim:
             if not os.path.exists(sim_path):
@@ -49,6 +50,9 @@ class DonkeyGymEnv(object):
             self.info = {key: info[key] for key in info if key in self.valid}
             self.info['reward'] = reward
             self.info['done'] = done
+            if done and self.reset_on_done:
+                print( "Resetting gym env because of 'done' flag." )
+                self.env.reset()
 
     def run_threaded(self, steering, throttle):
         if steering is None or throttle is None:
